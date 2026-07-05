@@ -788,16 +788,13 @@ def list_owned_games() -> str:
 
 
 def organize_gaming_session(
-    table1_category: str = "beginners",
-    table2_category: str = "intermediate",
-    table3_category: str = "experts"
+    categories: list[str] = ["beginners", "intermediate", "experts"]
 ) -> str:
-    """Organizes a 4-hour gaming session across 3 tables using owned board games.
+    """Organizes a 4-hour gaming session across a flexible number of tables using owned board games.
 
     Args:
-        table1_category: Category for Table 1: 'beginners', 'intermediate', or 'experts'.
-        table2_category: Category for Table 2: 'beginners', 'intermediate', or 'experts'.
-        table3_category: Category for Table 3: 'beginners', 'intermediate', or 'experts'.
+        categories: A list of categories for each table in order (e.g. ['beginners', 'intermediate', 'experts']).
+                     Allowed category values are 'beginners', 'intermediate', or 'experts'.
 
     Returns:
         A formatted string describing the scheduled games for each table.
@@ -823,7 +820,7 @@ def organize_gaming_session(
     available_pool = [g for g in owned_games if g.get("BGGId") not in last_session_ids]
     warn_repeat = False
     
-    if len(available_pool) < 3:
+    if len(available_pool) < len(categories):
         available_pool = list(owned_games)
         if last_session_ids:
             warn_repeat = True
@@ -853,11 +850,14 @@ def organize_gaming_session(
     available_pool = sorted(available_pool, key=get_quality_score, reverse=True)
     
     # Table classifications
-    tables_setup = [
-        {"name": "Table 1", "category": table1_category.lower().strip(), "games": [], "total_time": 0},
-        {"name": "Table 2", "category": table2_category.lower().strip(), "games": [], "total_time": 0},
-        {"name": "Table 3", "category": table3_category.lower().strip(), "games": [], "total_time": 0},
-    ]
+    tables_setup = []
+    for idx, cat in enumerate(categories, 1):
+        tables_setup.append({
+            "name": f"Table {idx}",
+            "category": cat.lower().strip(),
+            "games": [],
+            "total_time": 0
+        })
     
     # Prioritize Expert tables first to get heavy games from the pool
     schedule_order = []
@@ -1099,7 +1099,7 @@ board_game_hub_agent = Agent(
         model="gemini-flash-latest",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
-    instruction="You are a helpful AI assistant designed to provide accurate and useful information. When a user asks about a board game, use the search_board_game tool to lookup its details and display Name, Year released, Number of players, Best/Recommended player counts, rating, weight, Designers, Mechanics, Themes, Subcategories, and a brief description. Crucially, summarize the provided description into exactly 2-3 readable sentences, as the raw data is lemmatized and lacks punctuation. When a user wants recommendations, ask for their requirements (number of players, weight category, mechanics, themes, etc.) if not provided, and call the recommend_board_games tool. Limit the recommendations to exactly 3 by default, and offer to show more only if the user explicitly asks. When a user wants to manage their owned games list (either by asking directly, or by uploading/attaching a document containing a list of games), extract the list of game names (or read the uploaded file contents to get the names) and use the add_owned_games, remove_owned_games, or list_owned_games tools to manage their list. When a user wants to organize a gaming session, check the player experience levels for the 3 tables (beginners, intermediate, experts) from their prompt (or ask for them if not provided) and call the organize_gaming_session tool.",
+    instruction="You are the Board Game Hub Gamesmaster, an enthusiastic, knowledgeable, and engaging tabletop sage. Greet users with board gaming references (e.g., 'Welcome to the table!', 'Let\'s roll!', 'Ready to draft a game?'), and use tabletop terminology naturally (e.g., 'meeples', 'deck building', 'victory points'). When a user asks about a board game, use the search_board_game tool to lookup its details and display Name, Year released, Number of players, Best/Recommended player counts, rating, weight, Designers, Mechanics, Themes, Subcategories, and a brief description. Crucially, summarize the provided description into exactly 2-3 readable sentences, as the raw data is lemmatized and lacks punctuation. When a user wants recommendations, ask for their requirements (number of players, weight category, mechanics, themes, etc.) if not provided, and call the recommend_board_games tool. Limit the recommendations to exactly 3 by default, and offer to show more only if the user explicitly asks. When a user wants to manage their owned games list (either by asking directly, or by uploading/attaching a document containing a list of games), extract the list of game names (or read the uploaded file contents to get the names) and use the add_owned_games, remove_owned_games, or list_owned_games tools to manage their list. If they ask whether they own a specific game or if it is on their list/collection, first call list_owned_games to retrieve their collection and then answer directly whether it is in their collection, rather than searching the database for its details. When a user wants to organize a gaming session, extract the player experience levels for all tables from their prompt (e.g. Table 1 category is beginners, Table 2 category is intermediate, etc.) and call the organize_gaming_session tool with the categories list in order. If they do not specify categories or number of tables, ask for clarification or default to beginners, intermediate, and experts for 3 tables.",
     tools=[search_board_game, recommend_board_games, add_owned_games, remove_owned_games, list_owned_games, organize_gaming_session],
     before_agent_callback=security_checkpoint,
 )

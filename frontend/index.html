@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Board Game Hub - AI Concierge</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    /* Premium Board Game Theme CSS Variables */
+    :root {
+      --bg-page: radial-gradient(circle at center, #2e1a12 0%, #170d09 100%);
+      --bg-sidebar: #1a0f0a;
+      --bg-card: #2c1b12;
+      --bg-input: #150a06;
+      --border-color: #4a3225;
+      --accent-primary: #dca534; /* Polished Gold */
+      --accent-hover: #f4c05a;
+      --accent-secondary: #225a38; /* Forest Green */
+      --text-color: #f7f4eb; /* Parchment Ivory */
+      --text-muted: #bfa797;
+      --bg-hover: #3d271c;
+      --shadow-color: rgba(0, 0, 0, 0.5);
+      
+      /* Parchment Card Palette */
+      --parchment-bg: #f9f5eb;
+      --parchment-text: #2f1d11;
+      --parchment-border: #8b5a2b;
+      --parchment-muted: #6e503b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    body {
+      background: var(--bg-page);
+      color: var(--text-color);
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Layout structure */
+    .app-container {
+      display: flex;
+      width: 100%;
+      height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 320px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--accent-primary);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--bg-sidebar);
+      font-size: 24px;
+      font-weight: 800;
+      box-shadow: 0 4px 10px var(--shadow-color);
+    }
+
+    .brand-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent-primary);
+      letter-spacing: 0.5px;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Navigation */
+    .nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .nav-item {
+      padding: 12px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 15px;
+      color: var(--text-muted);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid transparent;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-hover);
+      color: var(--text-color);
+    }
+
+    .nav-item.active {
+      background: var(--bg-hover);
+      color: var(--accent-primary);
+      border-color: var(--border-color);
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: var(--border-color);
+      margin: 16px 0;
+    }
+
+    /* Sandbox Log / Checkpoints Monitor */
+    .sandbox-monitor {
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: auto;
+    }
+
+    .monitor-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-primary);
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #777;
+    }
+
+    .status-dot.active {
+      background: #2a9d8f;
+      box-shadow: 0 0 8px #2a9d8f;
+    }
+
+    .checkpoint-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      margin-bottom: 8px;
+      color: var(--text-muted);
+    }
+
+    .checkpoint-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .checkpoint-value {
+      font-weight: 500;
+      color: var(--text-color);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .checkpoint-led {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #2a9d8f;
+    }
+
+    /* Real-time Logger Console */
+    .logs-card {
+      background: #0d0604;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      font-family: monospace;
+      font-size: 10px;
+      height: 120px;
+      overflow-y: auto;
+      color: #92e0a9;
+    }
+
+    .log-entry {
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+
+    .log-system { color: #888; }
+    .log-security { color: #dca534; }
+    .log-error { color: #e76f51; }
+
+    /* Main Workspace */
+    .main-workspace {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: transparent;
+      height: 100%;
+    }
+
+    /* Top bar */
+    .topbar {
+      height: 70px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      background: rgba(26, 15, 10, 0.4);
+    }
+
+    .topbar-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
+    .session-info {
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--bg-card);
+      padding: 6px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    /* Workspace Content Area */
+    .workspace-content {
+      flex: 1;
+      padding: 32px;
+      overflow-y: auto;
+      display: flex;
+      justify-content: center;
+    }
+
+    .tab-panel {
+      display: none;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .tab-panel.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Clean Card forms */
+    .oak-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 8px 24px var(--shadow-color);
+      margin-bottom: 24px;
+    }
+
+    .oak-panel h2 {
+      font-size: 24px;
+      color: var(--accent-primary);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .oak-panel .subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-control {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+      border-color: var(--accent-primary);
+    }
+
+    /* Unified Button styling */
+    .btn {
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      outline: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--accent-primary);
+      border: 1px solid var(--accent-primary);
+      color: var(--bg-sidebar);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: var(--bg-hover);
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border-color);
+    }
+
+    /* Chat companion interface */
+    .chat-layout {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      max-width: 900px;
+      width: 100%;
+    }
+
+    .chat-history {
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .chat-bubble {
+      max-width: 85%;
+      padding: 16px 20px;
+      border-radius: 12px;
+      line-height: 1.5;
+      font-size: 15px;
+      word-wrap: break-word;
+    }
+
+    .chat-bubble.user {
+      align-self: flex-end;
+      background: var(--bg-hover);
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+      border-bottom-right-radius: 4px;
+    }
+
+    .chat-bubble.agent {
+      align-self: flex-start;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .chat-input-area {
+      display: flex;
+      gap: 12px;
+      padding: 16px 0;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .chat-input {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+      padding: 14px 20px;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+      resize: none;
+      height: 50px;
+    }
+
+    .chat-input:focus {
+      border-color: var(--accent-primary);
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-primary);
+    }
+
+    /* Parchment Game Card (Unified Look) */
+    .game-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      margin-top: 16px;
+    }
+
+    .parchment-card {
+      background: var(--parchment-bg);
+      border: 2px solid var(--parchment-border);
+      border-radius: 8px;
+      padding: 20px;
+      color: var(--parchment-text);
+      box-shadow: 0 6px 16px var(--shadow-color), inset 0 0 20px rgba(139, 90, 43, 0.1);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s;
+    }
+
+    .parchment-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .parchment-card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #532c15;
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+
+    .parchment-card-meta {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--parchment-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      border-bottom: 1px dashed var(--parchment-border);
+      padding-bottom: 6px;
+    }
+
+    .parchment-card-snippet {
+      font-size: 13px;
+      line-height: 1.45;
+      color: #3f2f25;
+      margin-bottom: 12px;
+      flex: 1;
+    }
+
+    .parchment-card-details {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 11px;
+    }
+
+    .tag-badge {
+      background: rgba(139, 90, 43, 0.15);
+      border: 1px solid rgba(139, 90, 43, 0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--parchment-text);
+      font-weight: 500;
+    }
+
+    .card-delete-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: none;
+      border: none;
+      color: #a04030;
+      font-size: 20px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    /* Wood-Trimmed Green Felt Timeline Table */
+    .timeline-container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      margin-top: 16px;
+      width: 100%;
+    }
+
+    .felt-table {
+      border: 4px solid #5a3c26; /* Wooden frame */
+      border-radius: 12px;
+      background: var(--accent-secondary); /* Green felt */
+      box-shadow: 0 8px 20px var(--shadow-color), inset 0 0 30px rgba(0,0,0,0.6);
+      overflow: hidden;
+    }
+
+    .felt-table-header {
+      background: rgba(0, 0, 0, 0.3);
+      border-bottom: 2px solid #5a3c26;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .felt-table-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent-primary);
+    }
+
+    .felt-table-time {
+      font-size: 13px;
+      font-weight: 600;
+      color: #f7f4eb;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 4px 10px;
+      border-radius: 12px;
+    }
+
+    .felt-games-list {
+      padding: 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .felt-game-item {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background-color 0.2s;
+    }
+
+    .felt-game-item:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .felt-game-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .felt-game-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .felt-game-sub {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .felt-game-weight {
+      font-size: 11px;
+      background: rgba(224, 159, 62, 0.2);
+      border: 1px solid var(--accent-primary);
+      color: var(--accent-primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* Loader */
+    .loader {
+      align-self: flex-start;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-muted);
+      font-size: 14px;
+      padding: 10px 0;
+    }
+
+    .spinner {
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top: 3px solid var(--accent-primary);
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">🎲</div>
+        <div>
+          <div class="brand-name">Board Game Hub</div>
+          <div class="brand-sub">AI Gamesmaster Concierge</div>
+        </div>
+      </div>
+
+      <ul class="nav-list">
+        <li class="nav-item active" onclick="switchTab('chatTab', this)">
+          <span>💬</span> Chat Companion
+        </li>
+        <li class="nav-item" onclick="switchTab('searchTab', this)">
+          <span>🔍</span> Game Search
+        </li>
+        <li class="nav-item" onclick="switchTab('recommendTab', this)">
+          <span>💡</span> Smart Recommender
+        </li>
+        <li class="nav-item" onclick="switchTab('shelfTab', this)">
+          <span>📚</span> Collection Shelf
+        </li>
+        <li class="nav-item" onclick="switchTab('scheduleTab', this)">
+          <span>🗓️</span> Session Planner
+        </li>
+      </ul>
+
+      <!-- Sandbox Node Monitor -->
+      <div class="sandbox-monitor">
+        <div class="monitor-title">
+          <span>Security Sandbox Node</span>
+          <div class="status-badge">
+            <span id="statusDot" class="status-dot"></span>
+            <span id="statusText">Offline</span>
+          </div>
+        </div>
+        <div class="checkpoint-row">
+          <span>PII Interceptor</span>
+          <div class="checkpoint-value">
+            <div id="piiLed" class="checkpoint-led"></div>
+            <span>Monitoring</span>
+          </div>
+        </div>
+        <div class="checkpoint-row">
+          <span>Prompt Injection Guard</span>
+          <div class="checkpoint-value">
+            <div id="injLed" class="checkpoint-led"></div>
+            <span>Monitoring</span>
+          </div>
+        </div>
+        <div class="checkpoint-row">
+          <span>Video Game Filter</span>
+          <div class="checkpoint-value">
+            <div id="vgLed" class="checkpoint-led"></div>
+            <span>Monitoring</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-time Logger -->
+      <div id="sandboxLogs" class="logs-card">
+        <div class="log-entry log-system">[System] Initializing application...</div>
+      </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="main-workspace">
+      <div class="topbar">
+        <div id="workspaceTitle" class="topbar-title">Chat Companion</div>
+        <div id="activeSessionLabel" class="session-info">Session: Offline</div>
+      </div>
+
+      <div class="workspace-content">
+        <!-- Chat Tab -->
+        <div id="chatTab" class="tab-panel active">
+          <div class="chat-layout">
+            <div id="chatHistory" class="chat-history">
+              <div class="chat-bubble agent">
+                Welcome to the table! 🎲 I am the Board Game Hub Gamesmaster. Greet me or use any tab to search games, get recommendations, manage your owned collection, or plan your next gaming session!
+              </div>
+            </div>
+            <div class="chat-input-area">
+              <textarea id="chatInput" class="chat-input" placeholder="Roll a prompt... (e.g. Tell me about Azul)" onkeydown="handleInputKey(event)"></textarea>
+              <button id="sendBtn" class="btn btn-primary" onclick="submitMessage()" disabled>Send</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search Tab -->
+        <div id="searchTab" class="tab-panel">
+          <div class="oak-panel">
+            <h2>Game Search</h2>
+            <p class="subtitle">Query details, mechanics, and designers from the database.</p>
+            <form onsubmit="submitSearch(event)">
+              <div class="form-group">
+                <label for="searchQuery">Board Game Name</label>
+                <input type="text" id="searchQuery" class="form-control" placeholder="Enter game name (e.g. Samurai)..." required>
+              </div>
+              <button type="submit" class="btn btn-primary">🔍 Search Game</button>
+            </form>
+          </div>
+          <div id="searchResultArea"></div>
+        </div>
+
+        <!-- Recommendations Tab -->
+        <div id="recommendTab" class="tab-panel">
+          <div class="oak-panel">
+            <h2>Smart Recommendations</h2>
+            <p class="subtitle">Find games matching player count, complexity, themes, or mechanics.</p>
+            <form onsubmit="submitRecommendations(event)">
+              <div style="display: flex; gap: 16px;">
+                <div class="form-group" style="flex: 1;">
+                  <label for="recPlayers">Player Count</label>
+                  <input type="number" id="recPlayers" class="form-control" min="1" max="100" placeholder="e.g. 4">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                  <label for="recWeight">Complexity Weight</label>
+                  <select id="recWeight" class="form-control">
+                    <option value="">Any Complexity</option>
+                    <option value="light">Light (Casual/Family)</option>
+                    <option value="medium">Medium (Tactical/Strategy)</option>
+                    <option value="heavy">Heavy (Expert/Brain-burner)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="recMechanics">Mechanics</label>
+                <input type="text" id="recMechanics" class="form-control" placeholder="e.g. Deckbuilding, Tile Placement">
+              </div>
+              <div class="form-group">
+                <label for="recThemes">Themes</label>
+                <input type="text" id="recThemes" class="form-control" placeholder="e.g. Sci-Fi, Fantasy, Trading">
+              </div>
+              <button type="submit" class="btn btn-primary">💡 Get Recommendations</button>
+            </form>
+          </div>
+          <div id="recommendResultArea"></div>
+        </div>
+
+        <!-- Collection Shelf Tab -->
+        <div id="shelfTab" class="tab-panel">
+          <div class="oak-panel">
+            <h2>Collection Shelf</h2>
+            <p class="subtitle">Manage and display your owned board game collection.</p>
+            <div style="display: flex; gap: 16px; margin-bottom: 24px;">
+              <input type="text" id="collGameName" class="form-control" placeholder="Game name to add or remove..." style="flex: 1;">
+              <button class="btn btn-primary" onclick="modifyShelf('add')">Add Game</button>
+              <button class="btn btn-secondary" onclick="modifyShelf('remove')">Remove Game</button>
+            </div>
+            <button class="btn btn-secondary" onclick="loadCollectionShelf()" style="width: 100%;">🔄 Fetch Collection List</button>
+          </div>
+          <div id="shelfResultArea"></div>
+        </div>
+
+        <!-- Session Planner Tab -->
+        <div id="scheduleTab" class="tab-panel">
+          <div class="oak-panel">
+            <h2>Session Planner</h2>
+            <p class="subtitle">Organize as many balanced gaming tables as you need.</p>
+            <form onsubmit="submitScheduler(event)">
+              <div id="schedulerTablesContainer">
+                <!-- Dynamic dropdowns will render here -->
+              </div>
+              <div style="margin-bottom: 16px; display: flex; gap: 12px;">
+                <button type="button" class="btn btn-secondary" onclick="addTableInput()" style="flex: 1;">+ Add Table</button>
+                <button type="button" class="btn btn-secondary" onclick="removeTableInput()" style="flex: 1;">- Remove Last</button>
+              </div>
+              <button type="submit" class="btn btn-primary">🗓️ Generate Schedule</button>
+            </form>
+          </div>
+          <div id="scheduleResultArea"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Generates a persistent user ID for session tracking
+    let userId = localStorage.getItem('board_game_hub_user_id');
+    if (!userId) {
+      userId = 'usr_' + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('board_game_hub_user_id', userId);
+    }
+
+    let sessionId = null;
+    let isConnected = false;
+
+    // Elements
+    const chatHistory = document.getElementById('chatHistory');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const sandboxLogs = document.getElementById('sandboxLogs');
+    const activeSessionLabel = document.getElementById('activeSessionLabel');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+
+    // LEDs
+    const piiLed = document.getElementById('piiLed');
+    const injLed = document.getElementById('injLed');
+    const vgLed = document.getElementById('vgLed');
+
+    // DOM Loaded Hook
+    window.addEventListener('DOMContentLoaded', () => {
+      initSession();
+      renderTableInputs();
+      chatInput.addEventListener('input', runLiveInputSecurityCheck);
+    });
+
+    // Session creation
+    async function initSession() {
+      addSandboxLog('system', 'Connecting to session service...', 'info');
+      try {
+        const res = await fetch(`/apps/app/users/${userId}/sessions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state: { visit_count: 1 } })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          sessionId = data.id;
+          setConnectedState(true);
+          addSandboxLog('system', `Connected! Session ID: ${sessionId.substring(0, 8)}`, 'success');
+        } else {
+          fallbackSession();
+        }
+      } catch (e) {
+        fallbackSession();
+      }
+    }
+
+    function fallbackSession() {
+      sessionId = 'sess_' + Math.random().toString(36).substring(2, 15);
+      setConnectedState(true);
+      addSandboxLog('system', `Using local fallback session: ${sessionId.substring(0, 8)}`, 'warn');
+    }
+
+    function setConnectedState(connected) {
+      isConnected = connected;
+      if (connected) {
+        statusDot.className = 'status-dot active';
+        statusText.innerText = 'Active';
+        sendBtn.disabled = false;
+        activeSessionLabel.innerText = `Session ID: ${sessionId.substring(0, 8)}`;
+      } else {
+        statusDot.className = 'status-dot';
+        statusText.innerText = 'Offline';
+        sendBtn.disabled = true;
+        activeSessionLabel.innerText = 'Offline';
+      }
+    }
+
+    // Dynamic Navigation Tab switching
+    function switchTab(tabId, el) {
+      // Toggle nav list active class
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      el.classList.add('active');
+
+      // Toggle tab panel active class
+      document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+      const activePanel = document.getElementById(tabId);
+      activePanel.classList.add('active');
+
+      // Set workspace title
+      document.getElementById('workspaceTitle').innerText = el.innerText.substring(2);
+    }
+
+    // Logger
+    function addSandboxLog(source, message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.innerText = `[${source.toUpperCase()}] ${message}`;
+      sandboxLogs.appendChild(entry);
+      sandboxLogs.scrollTop = sandboxLogs.scrollHeight;
+    }
+
+    // Reset LED colors
+    function resetSecurityIndicators() {
+      piiLed.style.background = '#2a9d8f';
+      injLed.style.background = '#2a9d8f';
+      vgLed.style.background = '#2a9d8f';
+    }
+
+    // Live pre-processing checker on client side
+    function runLiveInputSecurityCheck() {
+      const text = chatInput.value.toLowerCase().trim();
+      resetSecurityIndicators();
+
+      if (!text) return;
+
+      // PII Check
+      const emailRegex = /[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+/;
+      const phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\+?\d{10,13}/;
+      const cardRegex = /\b(?:\d[ -]*?){13,16}\b/;
+      if (emailRegex.test(text) || phoneRegex.test(text) || cardRegex.test(text)) {
+        piiLed.style.background = '#dca534'; // Warning yellow
+      }
+
+      // Injection keywords check
+      const injectionKeywords = ["ignore previous instructions", "system prompt", "jailbreak", "ignore the above", "bypass safety", "you are now a"];
+      if (injectionKeywords.some(kw => text.includes(kw))) {
+        injLed.style.background = '#e76f51'; // Critical red
+      }
+
+      // Video Game keywords check
+      const videoGameKeywords = ["video game", "xbox", "playstation", "nintendo", "fortnite", "minecraft"];
+      if (videoGameKeywords.some(kw => text.includes(kw))) {
+        vgLed.style.background = '#e76f51'; // Warning red
+      }
+    }
+
+    function simulateClientSandboxLogs(text) {
+      const lowercaseText = text.toLowerCase();
+      let emailRegex = /[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+/;
+      let phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\+?\d{10,13}/;
+      let cardRegex = /\b(?:\d[ -]*?){13,16}\b/;
+
+      let scrubbed = [];
+      if (emailRegex.test(lowercaseText)) scrubbed.push('email');
+      if (phoneRegex.test(lowercaseText)) scrubbed.push('phone');
+      if (cardRegex.test(lowercaseText)) scrubbed.push('credit card');
+
+      if (scrubbed.length > 0) {
+        addSandboxLog('security', `Decision: ALLOW (PII scrubbed successfully: ${scrubbed.join(', ')})`, 'security');
+      }
+
+      const injectionKeywords = ["ignore previous instructions", "system prompt", "jailbreak", "ignore the above", "bypass safety", "you are now a"];
+      if (injectionKeywords.some(kw => lowercaseText.includes(kw))) {
+        addSandboxLog('security', `Decision: BLOCK (CRITICAL: Prompt injection keyword matched)`, 'error');
+        return;
+      }
+
+      const videoGameKeywords = ["video game", "xbox", "playstation", "nintendo", "fortnite", "minecraft"];
+      if (videoGameKeywords.some(kw => lowercaseText.includes(kw))) {
+        addSandboxLog('security', `Decision: BLOCK (WARNING: Relevance filter domain policy violation)`, 'error');
+        return;
+      }
+
+      if (scrubbed.length === 0) {
+        addSandboxLog('security', 'Decision: ALLOW (Query clean, forwarding to LLM)', 'success');
+      }
+    }
+
+    // Call SSE API to chat with Agent
+    async function sendPromptToAgent(userMessage, visualResultElement = null) {
+      const loadingBubble = document.createElement('div');
+      loadingBubble.className = 'loader';
+      loadingBubble.innerHTML = '<div class="spinner"></div><span>Gamesmaster is drafting response...</span>';
+      chatHistory.appendChild(loadingBubble);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+
+      try {
+        const response = await fetch('/run_sse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            app_name: 'app',
+            user_id: userId,
+            session_id: sessionId,
+            new_message: { role: 'user', parts: [{ text: userMessage }] },
+            streaming: true
+          })
+        });
+
+        loadingBubble.remove();
+
+        if (!response.ok) {
+          addMessageToUI('agent', "An error occurred communicating with the server. Ensure the backend is active.", false);
+          return;
+        }
+
+        const bubble = addMessageToUI('agent', '', true);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        let fullAgentResponseText = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const dataStr = line.slice(6);
+              if (dataStr.trim()) {
+                try {
+                  const event = JSON.parse(dataStr);
+                  if (event.content && event.content.parts) {
+                    const textChunk = event.content.parts.map(p => p.text || '').join('');
+                    if (textChunk.startsWith(fullAgentResponseText)) {
+                      fullAgentResponseText = textChunk;
+                    } else {
+                      fullAgentResponseText += textChunk;
+                    }
+                    bubble.innerHTML = formatMarkdown(fullAgentResponseText);
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                  }
+                } catch (e) {}
+              }
+            }
+          }
+        }
+
+        addSandboxLog('agent', 'Stream completed successfully.', 'success');
+
+        // Dynamically parse structured visual layout (Cards or Timeline)
+        const structuredHtml = tryParsingStructuredResponse(fullAgentResponseText);
+        if (structuredHtml) {
+          bubble.innerHTML = structuredHtml;
+          chatHistory.scrollTop = chatHistory.scrollHeight;
+          
+          // If we called it from a specific form tab, copy it to the visual result area
+          if (visualResultElement) {
+            visualResultElement.innerHTML = structuredHtml;
+          }
+        }
+
+      } catch (e) {
+        loadingBubble.remove();
+        addSandboxLog('system', `Error sending query: ${e.message}`, 'error');
+        addMessageToUI('agent', `Could not connect to FastAPI server. Run the server on port 8000.`, false);
+      }
+    }
+
+    function addMessageToUI(sender, text, isHtml = false) {
+      const bubble = document.createElement('div');
+      bubble.className = `chat-bubble ${sender}`;
+      if (isHtml) {
+        bubble.innerHTML = text;
+      } else {
+        bubble.innerText = text;
+      }
+      chatHistory.appendChild(bubble);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+      return bubble;
+    }
+
+    function handleInputKey(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        submitMessage();
+      }
+    }
+
+    function submitMessage() {
+      const text = chatInput.value.trim();
+      if (!text || !isConnected) return;
+
+      chatInput.value = '';
+      resetSecurityIndicators();
+
+      addSandboxLog('security', `Preprocessing input prompt: "${text.substring(0, 40)}..."`, 'info');
+      simulateClientSandboxLogs(text);
+
+      addMessageToUI('user', text, false);
+      sendPromptToAgent(text);
+    }
+
+    // Markdown Parser Helper
+    function formatMarkdown(text) {
+      return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
+    }
+
+    // Unified Parser Engine (Game Cards & Timeline Tables)
+    function tryParsingStructuredResponse(text) {
+      // 1. Check if it's recommendation or search result containing game entries
+      if ((text.includes("Recommendation #") || text.includes("Name: ")) && !text.includes("Gaming Session Schedule")) {
+        const gameRegex = /(?:Recommendation\s+#\d+|Name:\s*(.*?))\r?\nYear released:\s*(.*?)\r?\nNumber of players:\s*(.*?)\r?\n(?:Best player count:\s*(.*?)\r?\nRecommended player counts:\s*(.*?)\r?\n)?Rating:\s*(.*?)\r?\nWeight:\s*(.*?)\r?\n(?:Kickstarter:\s*(.*?)\r?\n)?Designers:\s*(.*?)\r?\nMechanics:\s*(.*?)\r?\nThemes:\s*(.*?)\r?\nSubcategories:\s*(.*?)\r?\n(?:Image Path:\s*(.*?)\r?\n)?Description:\s*(.*?)(?=\r?\n\r?\n|Recommendation\s+#|Name:|$)/gis;
+        
+        let match;
+        const games = [];
+        // Extract games
+        while ((match = gameRegex.exec(text)) !== null) {
+          const name = match[1] ? match[1].trim() : (text.match(/Name:\s*(.*?)(?:\r?\n|$)/) ? text.match(/Name:\s*(.*?)(?:\r?\n|$)/)[1].trim() : "Board Game");
+          games.push({
+            name: name,
+            year: match[2].trim(),
+            players: match[3].trim(),
+            rating: match[6].trim(),
+            weight: match[7].trim(),
+            designers: match[9].trim(),
+            mechanics: match[10].trim(),
+            themes: match[11].trim(),
+            subcategories: match[12].trim(),
+            desc: match[14].trim()
+          });
+        }
+
+        if (games.length > 0) {
+          let html = '<div class="game-grid">';
+          games.forEach(g => {
+            html += `
+              <div class="parchment-card">
+                <div class="parchment-card-title">${g.name} (${g.year})</div>
+                <div class="parchment-card-meta">Rating: ${g.rating} | Weight: ${g.weight}</div>
+                <div class="parchment-card-snippet">${g.desc}</div>
+                <div class="parchment-card-details">
+                  <span class="tag-badge">👥 ${g.players}</span>
+                  <span class="tag-badge">🛠️ ${g.mechanics.split(', ')[0] || 'N/A'}</span>
+                  <span class="tag-badge">🎨 ${g.themes.split(', ')[0] || 'N/A'}</span>
+                </div>
+              </div>
+            `;
+          });
+          html += '</div>';
+          return html;
+        }
+      }
+
+      // 2. Check if it's owned games list
+      if (text.includes("currently own") && text.includes("board games:")) {
+        const ownedRegex = /(\d+)\.\s+(.*?)\s+\((.*?)\)\r?\n\s+Players:\s+(.*?)\s+\|\s+Rating:\s+(.*?)\s+\|\s+Weight:\s+(.*?)(?=\r?\n\s*\d+\.|$)/gis;
+        let oMatch;
+        const ownedList = [];
+        while ((oMatch = ownedRegex.exec(text)) !== null) {
+          ownedList.push({
+            num: oMatch[1],
+            name: oMatch[2].trim(),
+            year: oMatch[3].trim(),
+            players: oMatch[4].trim(),
+            rating: oMatch[5].trim(),
+            weight: oMatch[6].trim()
+          });
+        }
+
+        if (ownedList.length > 0) {
+          let html = '<div style="font-size: 14px; font-weight:700; margin-top:16px; margin-bottom:8px; color:var(--accent-primary);">My Active Board Game Collection:</div>';
+          html += '<div class="game-grid">';
+          ownedList.forEach(item => {
+            html += `
+              <div class="parchment-card">
+                <button class="card-delete-btn" title="Remove from shelf" onclick="deleteFromShelfDirect('${item.name}')">&times;</button>
+                <div class="parchment-card-title">${item.name} (${item.year})</div>
+                <div class="parchment-card-meta">Rating: ${item.rating} | Weight: ${item.weight}</div>
+                <div class="parchment-card-details">
+                  <span class="tag-badge">👥 ${item.players}</span>
+                </div>
+              </div>
+            `;
+          });
+          html += '</div>';
+          return html;
+        }
+      }
+
+      // 3. Check if it's Table Timeline Schedules
+      if (text.includes("Gaming Session Schedule") || (text.includes("Table 1") && text.includes("Table 2"))) {
+        const tableRegex = /(Table\s+\d+.*?)(?=Table\s+\d+|$)/gis;
+        let match;
+        const matches = [];
+        while ((match = tableRegex.exec(text)) !== null) {
+          matches.push(match[1]);
+        }
+
+        if (matches.length > 0) {
+          let html = '<div class="timeline-container">';
+          matches.forEach((sect, index) => {
+            const titleMatch = sect.match(/^(.*?)(?:\r?\n|$)/);
+            const timeMatch = sect.match(/Total Allocated Time.*?:?\s*(\r?\n\s*\*?\s*)?(\d+.*?)(?:\r?\n|$)/i);
+
+            // Extract games inside table
+            const gameRegex = /(?:[-*#\s]*(\d+)[\s.#:]+)\*\*?(.*?)\*\*?\s*\((.*?)\)\s*\r?\n\s*[-*]*\s*\*?Weight\*?[\s:]+[-*]*\s*(.*?)\s*\r?\n\s*[-*]*\s*\*?Time\*?[\s:]+[-*]*\s*(.*?)(?=\r?\n\s*(?:[-*#\s]*\d+[\s.#:]+)|\r?\n\r?\n|$)/gis;
+            let gMatch;
+            const games = [];
+            while ((gMatch = gameRegex.exec(sect)) !== null) {
+              games.push({
+                num: gMatch[1],
+                name: gMatch[2].trim(),
+                year: gMatch[3].trim(),
+                weight: gMatch[4].trim(),
+                time: gMatch[5].trim()
+              });
+            }
+
+            html += `
+              <div class="felt-table">
+                <div class="felt-table-header">
+                  <span class="felt-table-title">Table ${index + 1}: ${titleMatch ? titleMatch[1].replace(/[:🗂️\(\)\*]/g, '').trim() : 'Schedule'}</span>
+                  <span class="felt-table-time">${timeMatch ? timeMatch[2].trim() : '240 mins'}</span>
+                </div>
+                <div class="felt-games-list">
+                  ${games.length === 0 ? '<div style="font-size:12px; color:rgba(255,255,255,0.7); text-align:center;">No games scheduled for this table.</div>' : ''}
+                  ${games.map(g => `
+                    <div class="felt-game-item">
+                      <div class="felt-game-info">
+                        <div class="felt-game-title">#${g.num} ${g.name} (${g.year})</div>
+                        <div class="felt-game-sub">${g.time}</div>
+                      </div>
+                      <div class="felt-game-weight">Weight: ${g.weight}</div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `;
+          });
+          html += '</div>';
+          return html;
+        }
+      }
+
+      return null;
+    }
+
+    // Call SSE API specifically for tab content without redirecting to Chat Companion
+    async function submitTabQuery(userMessage, visualResultElement) {
+      if (!isConnected) return;
+      
+      // Update sandbox status and simulate client logs
+      resetSecurityIndicators();
+      addSandboxLog('security', `Preprocessing input prompt: "${userMessage.substring(0, 40)}..."`, 'info');
+      simulateClientSandboxLogs(userMessage);
+
+      try {
+        const response = await fetch('/run_sse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            app_name: 'app',
+            user_id: userId,
+            session_id: sessionId,
+            new_message: { role: 'user', parts: [{ text: userMessage }] },
+            streaming: true
+          })
+        });
+
+        if (!response.ok) {
+          visualResultElement.innerHTML = `<div style="color: #e76f51; font-size: 14px;">Error communicating with server. Ensure FastAPI is active.</div>`;
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        let fullAgentResponseText = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const dataStr = line.slice(6);
+              if (dataStr.trim()) {
+                try {
+                  const event = JSON.parse(dataStr);
+                  if (event.content && event.content.parts) {
+                    const textChunk = event.content.parts.map(p => p.text || '').join('');
+                    if (textChunk.startsWith(fullAgentResponseText)) {
+                      fullAgentResponseText = textChunk;
+                    } else {
+                      fullAgentResponseText += textChunk;
+                    }
+                  }
+                } catch (e) {}
+              }
+            }
+          }
+        }
+
+        addSandboxLog('agent', 'Tab query completed successfully.', 'success');
+
+        // Dynamically parse structured visual layout (Cards or Timeline)
+        const structuredHtml = tryParsingStructuredResponse(fullAgentResponseText);
+        if (structuredHtml) {
+          visualResultElement.innerHTML = structuredHtml;
+        } else {
+          // Fallback to formatted markdown text if no structured content parsed
+          visualResultElement.innerHTML = `<div style="line-height: 1.6; font-size: 14px; color: var(--text-color);">${formatMarkdown(fullAgentResponseText)}</div>`;
+        }
+
+      } catch (e) {
+        addSandboxLog('system', `Error sending tab query: ${e.message}`, 'error');
+        visualResultElement.innerHTML = `<div style="color: #e76f51; font-size: 14px;">Connection error: ${e.message}</div>`;
+      }
+    }
+
+    // Dynamic prompt quick execution
+    function sendQuickPrompt(prompt) {
+      chatInput.value = prompt;
+      const chatTabEl = document.querySelector('[onclick*="chatTab"]');
+      switchTab('chatTab', chatTabEl);
+      submitMessage();
+    }
+
+    // Form Submission Actions
+    function submitSearch(e) {
+      e.preventDefault();
+      const gameName = document.getElementById('searchQuery').value.trim();
+      if (!gameName) return;
+      const resArea = document.getElementById('searchResultArea');
+      resArea.innerHTML = '<div class="loader"><div class="spinner"></div>Searching board game...</div>';
+      submitTabQuery(`Search board game "${gameName}"`, resArea);
+    }
+
+    // Recommendations Submit
+    function submitRecommendations(e) {
+      e.preventDefault();
+      const players = document.getElementById('recPlayers').value;
+      const weight = document.getElementById('recWeight').value;
+      const mechanics = document.getElementById('recMechanics').value.trim();
+      const themes = document.getElementById('recThemes').value.trim();
+
+      let prompt = `Recommend board games`;
+      const clauses = [];
+      if (players) clauses.push(`for ${players} players`);
+      if (weight) clauses.push(`with a ${weight} complexity weight`);
+      if (mechanics) clauses.push(`featuring ${mechanics} mechanics`);
+      if (themes) clauses.push(`themed around ${themes}`);
+
+      if (clauses.length > 0) {
+        prompt += ' ' + clauses.join(', ');
+      }
+      const resArea = document.getElementById('recommendResultArea');
+      resArea.innerHTML = '<div class="loader"><div class="spinner"></div>Finding recommendations...</div>';
+      submitTabQuery(prompt, resArea);
+    }
+
+    function modifyShelf(action) {
+      const name = document.getElementById('collGameName').value.trim();
+      if (!name) return;
+      document.getElementById('collGameName').value = '';
+      
+      const resArea = document.getElementById('shelfResultArea');
+      resArea.innerHTML = `<div class="loader"><div class="spinner"></div>${action === 'add' ? 'Adding' : 'Removing'} game from shelf...</div>`;
+      if (action === 'add') {
+        submitTabQuery(`Add "${name}" to my owned games list`, resArea);
+      } else {
+        submitTabQuery(`Remove "${name}" from my owned games list`, resArea);
+      }
+    }
+
+    function deleteFromShelfDirect(gameName) {
+      const resArea = document.getElementById('shelfResultArea');
+      resArea.innerHTML = `<div class="loader"><div class="spinner"></div>Removing game from shelf...</div>`;
+      submitTabQuery(`Remove "${gameName}" from my owned games list`, resArea).then(() => {
+        setTimeout(loadCollectionShelf, 1500);
+      });
+    }
+
+    function loadCollectionShelf() {
+      const resArea = document.getElementById('shelfResultArea');
+      resArea.innerHTML = '<div class="loader"><div class="spinner"></div>Fetching collection list...</div>';
+      submitTabQuery(`List my collection`, resArea);
+    }
+
+    // Dynamic Multi-Table rendering
+    let tableCount = 3;
+
+    function renderTableInputs() {
+      const container = document.getElementById('schedulerTablesContainer');
+      if (!container) return;
+      container.innerHTML = '';
+      for (let i = 1; i <= tableCount; i++) {
+        const div = document.createElement('div');
+        div.className = 'form-group';
+        div.style.marginBottom = '12px';
+        div.innerHTML = `
+          <label for="schTable${i}">Table ${i} Category</label>
+          <select id="schTable${i}" class="form-control" style="width: 100%; padding: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 4px;">
+            <option value="beginners" ${i === 1 ? 'selected' : ''}>Beginners (Weight &le; 2.0)</option>
+            <option value="intermediate" ${i === 2 ? 'selected' : ''}>Intermediate (Weight &le; 3.0)</option>
+            <option value="experts" ${i === 3 ? 'selected' : ''}>Experts (All weights, heavy first)</option>
+          </select>
+        `;
+        container.appendChild(div);
+      }
+    }
+
+    function addTableInput() {
+      if (tableCount >= 10) return;
+      tableCount++;
+      renderTableInputs();
+    }
+
+    function removeTableInput() {
+      if (tableCount <= 1) return;
+      tableCount--;
+      renderTableInputs();
+    }
+
+    function submitScheduler(e) {
+      e.preventDefault();
+      const categories = [];
+      for (let i = 1; i <= tableCount; i++) {
+        const selectEl = document.getElementById(`schTable${i}`);
+        if (selectEl) {
+          categories.push(selectEl.value);
+        }
+      }
+
+      const promptParts = categories.map((cat, idx) => `Table ${idx + 1} category is "${cat}"`);
+      const resArea = document.getElementById('scheduleResultArea');
+      resArea.innerHTML = '<div class="loader"><div class="spinner"></div>Generating dynamic session schedule...</div>';
+      submitTabQuery(`Organize a gaming session. ${promptParts.join(', ')}.`, resArea);
+    }
+  </script>
+</body>
+</html>

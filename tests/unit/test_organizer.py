@@ -40,9 +40,7 @@ def test_organizer_flow(mock_save_h, mock_load_h, mock_save_o, mock_load_o):
     
     # Run organizer
     schedule = organize_gaming_session(
-        table1_category="beginners",
-        table2_category="intermediate",
-        table3_category="experts"
+        categories=["beginners", "intermediate", "experts"]
     )
     
     # Verify schedule structure
@@ -66,9 +64,7 @@ def test_organizer_flow(mock_save_h, mock_load_h, mock_save_o, mock_load_o):
     
     # Clear pool of available games and run again. It should warn/reuse because the pool is too small to avoid repeats.
     schedule_repeat = organize_gaming_session(
-        table1_category="beginners",
-        table2_category="intermediate",
-        table3_category="experts"
+        categories=["beginners", "intermediate", "experts"]
     )
     assert "reused" in schedule_repeat
 
@@ -88,9 +84,7 @@ def test_organizer_limit_max_three_games(mock_save_h, mock_load_h, mock_save_o, 
     
     # Run organizer for beginners (which only allows lightweight games)
     schedule = organize_gaming_session(
-        table1_category="beginners",
-        table2_category="beginners",
-        table3_category="beginners"
+        categories=["beginners", "beginners", "beginners"]
     )
     
     # Each table should contain at most 3 games in the text output
@@ -101,4 +95,30 @@ def test_organizer_limit_max_three_games(mock_save_h, mock_load_h, mock_save_o, 
     assert "2. " in table1_section
     assert "3. " in table1_section
     assert "4. " not in table1_section
+
+
+@patch('app.agent._load_owned_game_ids', side_effect=mock_load_owned)
+@patch('app.agent._save_owned_game_ids', side_effect=mock_save_owned)
+@patch('app.agent._load_session_history', side_effect=mock_load_history)
+@patch('app.agent._save_session_history', side_effect=mock_save_history)
+def test_organizer_flexible_tables(mock_save_h, mock_load_h, mock_save_o, mock_load_o):
+    global mock_owned_set, mock_history
+    mock_owned_set.clear()
+    mock_history.clear()
+    
+    mock_owned_set.update(['42', '2', '3', '4'])
+    
+    # 1. Test running with 2 tables
+    schedule_2 = organize_gaming_session(categories=["beginners", "experts"])
+    assert "Table 1 (Beginners)" in schedule_2
+    assert "Table 2 (Experts)" in schedule_2
+    assert "Table 3" not in schedule_2
+
+    # 2. Test running with 4 tables
+    schedule_4 = organize_gaming_session(categories=["beginners", "intermediate", "experts", "beginners"])
+    assert "Table 1 (Beginners)" in schedule_4
+    assert "Table 2 (Intermediate)" in schedule_4
+    assert "Table 3 (Experts)" in schedule_4
+    assert "Table 4 (Beginners)" in schedule_4
+    assert "Table 5" not in schedule_4
 

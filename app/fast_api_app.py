@@ -20,6 +20,7 @@ import google.auth
 from a2a.server.tasks import InMemoryTaskStore
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from google.adk.cli.fast_api import get_fast_api_app
 from google.adk.runners import Runner
 from google.cloud import logging as google_cloud_logging
@@ -39,9 +40,36 @@ load_dotenv()
 setup_telemetry()
 # Must run before get_fast_api_app to set the tracer provider resource.
 setup_agent_engine_telemetry()
-_, project_id = google.auth.default()
-logging_client = google_cloud_logging.Client()
-logger = logging_client.logger(__name__)
+try:
+    _, project_id = google.auth.default()
+    logging_client = google_cloud_logging.Client()
+    logger = logging_client.logger(__name__)
+except Exception:
+    class FallbackLogger:
+        def __init__(self):
+            import logging
+            self._logger = logging.getLogger("fast_api_app")
+            # Ensure logging output is configured
+            if not self._logger.handlers:
+                handler = logging.StreamHandler()
+                formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+                handler.setFormatter(formatter)
+                self._logger.addHandler(handler)
+                self._logger.setLevel(logging.INFO)
+
+        def log_struct(self, info_dict, severity="INFO"):
+            self._logger.info(f"[{severity}] {info_dict}")
+
+        def info(self, msg):
+            self._logger.info(msg)
+
+        def warning(self, msg):
+            self._logger.warning(msg)
+
+        def error(self, msg):
+            self._logger.error(msg)
+            
+    logger = FallbackLogger()
 allow_origins = (
     os.getenv("ALLOW_ORIGINS", "").split(",") if os.getenv("ALLOW_ORIGINS") else None
 )
@@ -76,9 +104,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app: FastAPI = get_fast_api_app(
+app:FastAPI = get_fast_api_app(
     agents_dir=AGENT_DIR,
-    web=True,
+    web=False,
     artifact_service_uri=services.ARTIFACT_SERVICE_URI,
     allow_origins=allow_origins,
     session_service_uri=services.SESSION_SERVICE_URI,
@@ -88,6 +116,10 @@ app: FastAPI = get_fast_api_app(
 app.title = "board-game-hub"
 app.description = "API for interacting with the Agent board-game-hub"
 
+# Serve the static UI files under the root path /
+frontend_dir = os.path.join(AGENT_DIR, "frontend")
+if os.path.exists(frontend_dir):
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="hub")
 
 # Proxy routes so the Vertex AI Console Playground (reasoning_engine SDK) can
 # talk to this agent alongside the native adk_api routes.
