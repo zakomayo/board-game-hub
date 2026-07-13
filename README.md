@@ -145,3 +145,8 @@ Here are three sample test cases specific to the Board Game Hub:
 ## Demo Script
 
 The spoken presentation script for walkthrough recordings is available in [DEMO_SCRIPT.txt](DEMO_SCRIPT.txt).
+
+
+## Future steps
+
+Connect to bgg API
