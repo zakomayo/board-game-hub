@@ -149,4 +149,4 @@ The spoken presentation script for walkthrough recordings is available in [DEMO_
 
 ## Future steps
 
-Connect to bgg API
+Connect to bgg API. 
